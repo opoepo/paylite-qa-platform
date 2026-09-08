@@ -1,0 +1,28 @@
+# --- Maven ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iml
+out/
+
+# --- macOS ---
+.DS_Store
+
+# --- Secrets and local settings ---
+.env
+*.local.properties
+
+# --- Artifacts of tests  ---
+allure-results/
+allure-report/
+test-output/
+screenshots/
+logs/
+*.log
+
+# --- Node (Playwright + TypeScript) ---
+node_modules/
+playwright-report/
+test-results/

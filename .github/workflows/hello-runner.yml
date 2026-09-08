@@ -1,0 +1,30 @@
+name: Hello Runner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  inspect:
+    name: Inspect the runner
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Who am I and where am I
+        run: |
+          whoami
+          pwd
+          uname -a
+
+      - name: What Java is preinstalled here
+        run: java -version
+
+      - name: Is my project code here?
+        run: ls -la
+
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: And now?
+        run: ls -la

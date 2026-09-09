@@ -11,20 +11,24 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Who am I and where am I
+      - name: Java before we do anything
         run: |
-          whoami
-          pwd
-          uname -a
+          java -version
+          echo "JAVA_HOME=$JAVA_HOME"
 
-      - name: What Java is preinstalled here
-        run: java -version
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
-      - name: Is my project code here?
-        run: ls -la
+      - name: Java after setup-java
+        run: |
+          java -version
+          echo "JAVA_HOME=$JAVA_HOME"
 
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: And now?
+      - name: Show what we have
         run: ls -la

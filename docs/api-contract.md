@@ -121,7 +121,7 @@ All errors use `application/problem+json` (RFC 9457):
 | `capture_exceeds_authorized` | 422 | capture > authorized |
 | `refund_exceeds_captured` | 422 | refund > captured - already refunded |
 | `unsupported_currency` | 422 | currency outside USD/EUR/VND |
-
+| `authorization_expired` | 409 | capture or cancel on an expired hold — whether expiry was just detected or already persisted |
 `409` = valid operation, impossible right now.
 `422` = operation invalid regardless of state.
 
@@ -203,11 +203,12 @@ The remaining 170 of the hold is released by the bank on capture.
 ## Open questions
 
 Gaps found while specifying. Resolved ones move into rules above.
-| 2 | List filter by status returns never-accessed expired holds as AUTHORIZED | Open. Decide when implementing GET /payments. |
 
 | # | Question | Status |
 |---|---|---|
 | 1 | Actual total exceeds the authorized buffer | Rejected with 422. The order service re-authorizes. Overcapture deliberately unsupported. |
+| 2 | List filter by status returns never-accessed expired holds as AUTHORIZED | Open. Decide when implementing GET /payments. |
+| 3 | Capture on a hold already persisted as EXPIRED: `authorization_expired` or `invalid_state`? | Resolved: always `authorization_expired`. The response must not depend on whether the payment was read earlier. Refund on EXPIRED stays `invalid_state`. |
 
 ## Implementation order
 

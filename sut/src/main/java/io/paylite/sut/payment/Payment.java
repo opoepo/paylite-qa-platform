@@ -78,4 +78,17 @@ public class Payment {
         payment.updatedAt = now;
         return payment;
     }
+
+    /**
+     * Lazy expiry (ADR-0010): a hold is expired from the moment
+     * now >= authorizationExpiresAt. Returns true if the status changed.
+     */
+    public boolean expireIfDue(Instant now) {
+        if (status == PaymentStatus.AUTHORIZED && !now.isBefore(authorizationExpiresAt)) {
+            status = PaymentStatus.EXPIRED;
+            updatedAt = now;
+            return true;
+        }
+        return false;
+    }
 }

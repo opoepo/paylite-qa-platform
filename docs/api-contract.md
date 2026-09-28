@@ -82,7 +82,8 @@ Anything not listed is a `409`.
    `authorizationExpiresAt`.
 4. Currency is immutable after creation.
 5. All amounts are strictly positive. Zero-amount operations are rejected.
-6. Expiry is evaluated on read/operation, not by a scheduler.
+6. Expiry is evaluated lazily on read or operation, and persisted.
+   A hold is expired when `now >= authorizationExpiresAt`.
 7. Every state-changing request requires an `Idempotency-Key` header.
 
 ## Idempotency
@@ -202,6 +203,7 @@ The remaining 170 of the hold is released by the bank on capture.
 ## Open questions
 
 Gaps found while specifying. Resolved ones move into rules above.
+| 2 | List filter by status returns never-accessed expired holds as AUTHORIZED | Open. Decide when implementing GET /payments. |
 
 | # | Question | Status |
 |---|---|---|

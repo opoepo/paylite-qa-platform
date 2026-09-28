@@ -38,9 +38,11 @@ public class PaymentService {
         return repository.save(payment);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Payment get(UUID id) {
-        return repository.findById(id)
+        Payment payment = repository.findById(id)
                 .orElseThrow(() -> new PaymentNotFoundException(id));
+        payment.expireIfDue(clock.instant());
+        return payment;
     }
 }

@@ -1,6 +1,6 @@
 package io.paylite.sut.error;
 
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import io.paylite.sut.payment.Currency;
 import io.paylite.sut.payment.PaymentNotFoundException;
@@ -83,13 +83,15 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                     "Unknown field '" + unknown.getPropertyName() + "'", path(request)));
         }
 
-        if (cause instanceof MismatchedInputException mismatch && !mismatch.getPath().isEmpty()) {
-            String field = mismatch.getPath().get(mismatch.getPath().size() - 1).getFieldName();
+        if (cause instanceof JsonMappingException mapping && !mapping.getPath().isEmpty()) {
+            String field = mapping.getPath().get(mapping.getPath().size() - 1).getFieldName();
             if (field != null) {
                 return respond(validationFailed(List.of(typeViolation(field)), path(request)));
             }
         }
 
+        log.debug("Unreadable request body, cause: {}",
+                cause == null ? "none" : cause.getClass().getName(), ex);
         return respond(problem(HttpStatus.BAD_REQUEST, "malformed_request", "Malformed request",
                 "Request body is missing or is not valid JSON", path(request)));
     }

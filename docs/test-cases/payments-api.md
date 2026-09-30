@@ -43,8 +43,10 @@ so every test traces back to a requirement.
 | AUTH-18 | Order reference too long | 256 characters | orderReference/too_long | Resource | pending |
 | AUTH-19 | Order reference at limit | 255 characters | 201 | Resource | pending |
 | AUTH-20 | Messages independent of locale | `{}` with `Accept-Language: ru` | same English messages as AUTH-10 | Errors | pending |
-| AUTH-21 | Amount as numeric string | amount "100" | see Open questions #1 | Rule 5 | undecided |
-| AUTH-22 | Amount above 64-bit range | amount 9223372036854775808 | see Open questions #2 | ADR-0001 | undecided |
+| AUTH-21 | Amount as numeric string | amount "100" | see Open questions #1 | Rule 5 | manual-pass |
+| AUTH-22 | Amount above 64-bit range | amount 9223372036854775808 | amount/invalid_amount | ADR-0001 | manual-pass |
+| AUTH-23 | Currency as number | currency 0 | currency/unsupported_currency (no enum ordinals) | Money | manual-pass |
+| AUTH-24 | Order reference as number | orderReference 123 | orderReference/invalid_value (no scalar coercion) | Resource | manual-pass |
 
 ### Malformed requests — `400`
 
@@ -92,5 +94,5 @@ EXP-04 and EXP-05 need a controllable `Clock`; they cannot be verified reliably 
 
 | # | Question | Blocks |
 |---|---|---|
-| 1 | Jackson coerces the string `"100"` into the number 100 by default. Accept or reject? | AUTH-21 |
-| 2 | A number beyond the 64-bit range fails at the JSON parser level. Should it be `validation_failed` (invalid_amount) or `malformed_request`? Current behaviour unverified. | AUTH-22 |
+| 1 | Jackson coerces the string `"100"` into the number 100 by default. Accept or reject? | Resolved: reject. No scalar coercion, no enum ordinals — the API accepts exactly the declared JSON type. |
+| 2 | A number beyond the 64-bit range fails at the JSON parser level. Should it be `validation_failed` (invalid_amount) or `malformed_request`? Current behaviour unverified. | Resolved: 422 amount/invalid_amount — valid JSON, value out of range for the field |

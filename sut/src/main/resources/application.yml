@@ -22,6 +22,9 @@ spring:
     deserialization:
       accept-float-as-int: false
       fail-on-unknown-properties: true
+      fail-on-numbers-for-enums: true
+    mapper:
+      allow-coercion-of-scalars: false
 
   flyway:
     enabled: true

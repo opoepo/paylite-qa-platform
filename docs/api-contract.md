@@ -96,7 +96,31 @@ Anything not listed is a `409`.
 
 ## Errors
 
-All errors use `application/problem+json` (RFC 9457):
+All errors use `application/problem+json` (RFC 9457) and carry two levels
+of information:
+
+- top-level `code` — what kind of problem occurred;
+- `errors[]` — present only for `validation_failed`: one entry per invalid
+  field, sorted by field name.
+
+Validation example:
+
+```json
+{
+  "type": "https://paylite.local/errors/validation-failed",
+  "title": "Validation failed",
+  "status": 422,
+  "code": "validation_failed",
+  "detail": "One or more fields are invalid",
+  "instance": "/api/v1/payments",
+  "errors": [
+    { "field": "amount",   "code": "invalid_amount",       "message": "must be a positive integer in minor units" },
+    { "field": "currency", "code": "unsupported_currency", "message": "must be one of USD, EUR, VND" }
+  ]
+}
+```
+
+State conflict example:
 
 ```json
 {
@@ -109,21 +133,49 @@ All errors use `application/problem+json` (RFC 9457):
 }
 ```
 
+### Top-level codes
+
 | Code | HTTP | When |
 |---|---|---|
-| `malformed_request` | 400 | body is not valid JSON |
+| `malformed_request` | 400 | body is not parseable JSON, contains an unknown field, or a path parameter has the wrong format |
 | `missing_idempotency_key` | 400 | header absent on a write operation |
 | `payment_not_found` | 404 | unknown id |
 | `invalid_state` | 409 | operation not allowed from current status |
-| `authorization_expired` | 409 | capture attempted after expiry |
+| `authorization_expired` | 409 | capture or cancel on an expired hold — whether expiry was just detected or already persisted |
 | `idempotency_key_reuse` | 409 | same key, different body |
-| `invalid_amount` | 422 | non-positive or non-integer amount |
+| `validation_failed` | 422 | one or more fields are invalid — see `errors[]` |
 | `capture_exceeds_authorized` | 422 | capture > authorized |
 | `refund_exceeds_captured` | 422 | refund > captured - already refunded |
-| `unsupported_currency` | 422 | currency outside USD/EUR/VND |
-| `authorization_expired` | 409 | capture or cancel on an expired hold — whether expiry was just detected or already persisted |
-`409` = valid operation, impossible right now.
-`422` = operation invalid regardless of state.
+| `internal_error` | 500 | unexpected failure; details are logged, never returned |
+
+### Field codes (inside `errors[]`)
+
+| Code | Message | When |
+|---|---|---|
+| `required` | is required | field missing, null or blank |
+| `too_long` | is too long | exceeds maximum length |
+| `invalid_amount` | must be a positive integer in minor units | non-positive, fractional, non-numeric, a string, or beyond the 64-bit range |
+| `unsupported_currency` | must be one of USD, EUR, VND | unknown code, wrong case, or a number |
+| `invalid_value` | has an invalid value | any other type mismatch, e.g. a number where text is expected |
+
+Messages are fixed English strings keyed by code. They never depend on
+server locale or on the client's `Accept-Language`.
+
+### Choosing the status
+
+- `400` — the request could not be understood.
+- `409` — the request is valid, but impossible in the current state.
+- `422` — the request was understood, but its content is invalid regardless of state.
+
+## Input typing
+
+The API accepts exactly the declared JSON type. Nothing is converted
+silently:
+
+- Unknown fields are rejected (`400 malformed_request`).
+- Amounts are JSON integers. `12.5` and `"100"` are both rejected.
+- Text fields accept JSON strings only. `123` and `true` are rejected.
+- Currencies are matched by exact name. `"usd"` and `0` are rejected.
 
 ## Endpoints
 

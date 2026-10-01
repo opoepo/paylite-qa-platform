@@ -19,14 +19,14 @@ so every test traces back to a requirement.
 
 ### Happy path
 
-| ID | Case | Input | Expected | Ref | Status |
-|---|---|---|---|---|---|
-| AUTH-01 | Authorize a payment | USD, amount 540 | 201; status `AUTHORIZED`; captured 0; refunded 0; input fields echoed | Rules 1-5 | manual-pass |
-| AUTH-02 | Location header | as AUTH-01 | `Location: /api/v1/payments/{id}`, id equals body `id` | REST | manual-pass |
+| ID | Case | Input | Expected | Ref | Status      |
+|---|---|---|---|---|-------------|
+| AUTH-01 | Authorize a payment | USD, amount 540 | 201; status `AUTHORIZED`; captured 0; refunded 0; input fields echoed | Rules 1-5 | automated   |
+| AUTH-02 | Location header | as AUTH-01 | `Location: /api/v1/payments/{id}`, id equals body `id` | REST | automated   |
 | AUTH-03 | Hold TTL | as AUTH-01 | `authorizationExpiresAt - createdAt` equals configured TTL (default P7D) | Rule 6 | manual-pass |
 | AUTH-04 | Timestamps on creation | as AUTH-01 | `createdAt == updatedAt`; ISO-8601 in UTC (`Z` suffix) | ADR-0005 | manual-pass |
-| AUTH-05 | Zero-exponent currency | VND, amount 50000 | 201; amount stored as-is | ADR-0001 | pending |
-| AUTH-06 | Minimum amount | amount 1 | 201 | Rule 5 | pending |
+| AUTH-05 | Zero-exponent currency | VND, amount 50000 | 201; amount stored as-is | ADR-0001 | pending     |
+| AUTH-06 | Minimum amount | amount 1 | 201 | Rule 5 | pending     |
 
 ### Field validation — `422 validation_failed`
 
@@ -61,10 +61,10 @@ so every test traces back to a requirement.
 
 ## Get — `GET /api/v1/payments/{id}`
 
-| ID | Case | Input | Expected | Ref | Status |
-|---|---|---|---|---|---|
+| ID | Case | Input | Expected | Ref | Status      |
+|---|---|---|---|---|-------------|
 | GET-01 | Existing payment | id from AUTH-01 | 200; body equals the POST response | Endpoints | manual-pass |
-| GET-02 | Unknown id | random UUID | 404 `payment_not_found`; `instance` equals request path | Errors | manual-pass |
+| GET-02 | Unknown id | random UUID | 404 `payment_not_found`; `instance` equals request path | Errors | automated   |
 | GET-03 | Malformed id | `not-a-uuid` | 400 `malformed_request`; detail mentions `id` | Errors | manual-pass |
 
 ## Lazy expiry

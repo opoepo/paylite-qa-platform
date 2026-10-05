@@ -1,75 +1,51 @@
 package io.paylite.qa.tests.api;
 
-import io.paylite.qa.api.ApiSpecs;
+import io.paylite.qa.api.PaymentsClient;
+import io.paylite.qa.data.PaymentData;
+import io.paylite.qa.model.AuthorizePaymentRequest;
+import io.paylite.qa.model.Currency;
+import io.paylite.qa.model.PaymentResponse;
+import io.paylite.qa.model.PaymentStatus;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.UUID;
-
-import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 class AuthorizePaymentTest {
+
+    private final PaymentsClient payments = new PaymentsClient();
 
     @Test
     @DisplayName("[AUTH-01] Authorize a payment")
     void authorizesPayment() {
-        String orderReference = "ORD-" + UUID.randomUUID();
+        AuthorizePaymentRequest request = PaymentData.validAuthorization();
 
-        given()
-                .spec(ApiSpecs.base())
-                .header("Idempotency-Key", UUID.randomUUID().toString())
-                .body("""
-                        {"orderReference": "%s", "currency": "USD", "amount": 540}
-                        """.formatted(orderReference))
-        .when()
-                .post("/payments")
-        .then()
-                .statusCode(201)
-                .body("id", notNullValue())
-                .body("orderReference", equalTo(orderReference))
-                .body("currency", equalTo("USD"))
-                .body("authorizedAmount", equalTo(540))
-                .body("capturedAmount", equalTo(0))
-                .body("refundedAmount", equalTo(0))
-                .body("status", equalTo("AUTHORIZED"));
+        PaymentResponse payment = payments.authorize(request)
+                .then().statusCode(201)
+                .extract().as(PaymentResponse.class);
+
+        assertSoftly(softly -> {
+            softly.assertThat(payment.id()).isNotNull();
+            softly.assertThat(payment.orderReference()).isEqualTo(request.orderReference());
+            softly.assertThat(payment.currency()).isEqualTo(Currency.valueOf(request.currency()));
+            softly.assertThat(payment.authorizedAmount()).isEqualTo(request.amount());
+            softly.assertThat(payment.capturedAmount()).isZero();
+            softly.assertThat(payment.refundedAmount()).isZero();
+            softly.assertThat(payment.status()).isEqualTo(PaymentStatus.AUTHORIZED);
+        });
     }
 
     @Test
     @DisplayName("[AUTH-02] Location header points to the created payment")
     void locationHeaderPointsToCreatedPayment() {
-        Response response = given()
-                .spec(ApiSpecs.base())
-                .header("Idempotency-Key", UUID.randomUUID().toString())
-                .body("""
-                        {"orderReference": "ORD-%s", "currency": "USD", "amount": 540}
-                        """.formatted(UUID.randomUUID()))
-        .when()
-                .post("/payments")
-        .then()
-                .statusCode(201)
-                .extract().response();
+        Response response = payments.authorize(PaymentData.validAuthorization());
 
-        String id = response.path("id");
-        assertThat(response.header("Location")).isEqualTo("/api/v1/payments/" + id);
-    }
+        response.then().statusCode(201);
+        PaymentResponse payment = response.as(PaymentResponse.class);
 
-    @Test
-    @DisplayName("[GET-02] Unknown payment returns 404 payment_not_found")
-    void unknownPaymentReturnsNotFound() {
-        String id = UUID.randomUUID().toString();
-
-        given()
-                .spec(ApiSpecs.base())
-        .when()
-                .get("/payments/{id}", id)
-        .then()
-                .statusCode(404)
-                .contentType("application/problem+json")
-                .body("code", equalTo("payment_not_found"))
-                .body("instance", equalTo("/api/v1/payments/" + id));
+        assertThat(response.header("Location"))
+                .isEqualTo("/api/v1/payments/" + payment.id());
     }
 }

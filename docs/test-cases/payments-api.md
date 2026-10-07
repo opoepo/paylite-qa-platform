@@ -47,6 +47,7 @@ so every test traces back to a requirement.
 | AUTH-22 | Amount above 64-bit range | amount 9223372036854775808 | amount/invalid_amount | ADR-0001 | manual-pass |
 | AUTH-23 | Currency as number | currency 0 | currency/unsupported_currency (no enum ordinals) | Money | manual-pass |
 | AUTH-24 | Order reference as number | orderReference 123 | orderReference/invalid_value (no scalar coercion) | Resource | manual-pass |
+| AUTH-25 | Missing amount | no `amount` field | amount/required | Rule 5 | automated |
 
 ### Malformed requests — `400`
 

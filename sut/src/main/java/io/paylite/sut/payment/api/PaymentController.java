@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.paylite.sut.error.MissingIdempotencyKeyException;
 
 import java.net.URI;
 import java.util.UUID;
@@ -33,6 +34,7 @@ public class PaymentController {
     public ResponseEntity<PaymentResponse> authorize(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody AuthorizePaymentRequest request) {
+        requireIdempotencyKey(idempotencyKey);
         Payment payment = service.authorize(request);
         URI location = URI.create("/api/v1/payments/" + payment.getId());
         return ResponseEntity.created(location).body(PaymentResponse.from(payment));
@@ -41,5 +43,11 @@ public class PaymentController {
     @GetMapping("/{id}")
     public PaymentResponse get(@PathVariable UUID id) {
         return PaymentResponse.from(service.get(id));
+    }
+
+    private static void requireIdempotencyKey(String key) {
+        if (key.isBlank()) {
+            throw new MissingIdempotencyKeyException();
+        }
     }
 }

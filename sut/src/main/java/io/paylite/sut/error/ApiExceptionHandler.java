@@ -54,6 +54,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 "Payment not found", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(MissingIdempotencyKeyException.class)
+    public ResponseEntity<Object> handleBlankIdempotencyKey(MissingIdempotencyKeyException ex,
+                                                            HttpServletRequest request) {
+        return respond(missingIdempotencyKey(request.getRequestURI()));
+    }
+
     // ── Framework exceptions (overrides of ResponseEntityExceptionHandler) ──
 
     /** Bean Validation failed: @NotNull, @Positive, @Size on request DTOs. */
@@ -104,9 +110,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                                                                           WebRequest request) {
         if (ex instanceof MissingRequestHeaderException missing
                 && IDEMPOTENCY_HEADER.equalsIgnoreCase(missing.getHeaderName())) {
-            return respond(problem(HttpStatus.BAD_REQUEST, "missing_idempotency_key",
-                    "Missing Idempotency-Key",
-                    "Header 'Idempotency-Key' is required for this operation", path(request)));
+            return respond(missingIdempotencyKey(path(request)));
         }
         return respond(problem(HttpStatus.BAD_REQUEST, "malformed_request", "Malformed request",
                 ex.getMessage(), path(request)));
@@ -150,6 +154,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 "Validation failed", "One or more fields are invalid", path);
         pd.setProperty("errors", violations);
         return pd;
+    }
+
+    /** Same response whether the header is absent or blank. */
+    private static ProblemDetail missingIdempotencyKey(String path) {
+        return problem(HttpStatus.BAD_REQUEST, "missing_idempotency_key",
+                "Missing Idempotency-Key",
+                "Header 'Idempotency-Key' is required for this operation", path);
     }
 
     /** Field-level code for a JSON type error caught by Jackson. */

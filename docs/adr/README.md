@@ -18,3 +18,4 @@ get a new ADR that references the old one.
 | [0010](0010-lazy-authorization-expiry.md) | Authorization expiry evaluated lazily | Accepted |
 | [0011](0011-mit-license-solo-authorship.md) | MIT license, no external contributors without CLA | Accepted |
 | [0012](0012-postgres-16-alpine-image.md) | postgres:16-alpine image | Accepted |
+| [0015](0015-microsecond-timestamps.md) | Timestamps at microsecond precision | Accepted |

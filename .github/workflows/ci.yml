@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    name: API tests (Java + RestAssured)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Start PostgreSQL
+        run: docker compose up -d --wait db
+
+      - name: Build the service
+        run: mvn -B -ntp -pl sut package -DskipTests
+
+      - name: Start the service
+        run: java -jar sut/target/paylite-sut-*.jar > sut.log 2>&1 &
+
+      - name: Wait for the service
+        run: |
+          for i in $(seq 1 60); do
+            if curl -s -o /dev/null --max-time 3 http://localhost:8080/; then
+              echo "Service is up after ~$((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Service did not start within the time limit"
+          cat sut.log
+          exit 1
+
+      - name: Run API tests
+        run: mvn -B -ntp -pl tests-java test
+
+      - name: Show service and database logs
+        if: failure()
+        run: |
+          echo "===== service log ====="
+          cat sut.log
+          echo "===== database log ====="
+          docker compose logs db
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            tests-java/target/surefire-reports/
+            sut.log
+          retention-days: 14

@@ -26,6 +26,9 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Compile everything
+        run: mvn -B -ntp test-compile
+
       - name: Start PostgreSQL
         run: docker compose up -d --wait db
 
@@ -36,8 +39,6 @@ jobs:
         run: |
           java -jar sut/target/paylite-sut-*.jar > sut.log 2>&1 &
           echo "SUT_PID=$!" >> "$GITHUB_ENV"
-        env:
-          DATABASE_URL: jdbc:postgresql://localhost:5999/paylite
 
       - name: Wait for the service
         run: |

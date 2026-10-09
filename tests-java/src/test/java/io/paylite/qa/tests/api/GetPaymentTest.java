@@ -22,7 +22,7 @@ class GetPaymentTest {
                 .then().statusCode(201)
                 .extract().as(PaymentResponse.class);
 
-        PaymentResponse fetched = payments.fetch(created.id())
+        PaymentResponse fetched = payments.get(created.id())
                 .then().statusCode(200)
                 .extract().as(PaymentResponse.class);
 

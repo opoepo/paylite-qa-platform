@@ -26,6 +26,9 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Compile everything
+        run: mvn -B -ntp test-compile
+
       - name: Start PostgreSQL
         run: docker compose up -d --wait db
 
@@ -33,11 +36,18 @@ jobs:
         run: mvn -B -ntp -pl sut package -DskipTests
 
       - name: Start the service
-        run: java -jar sut/target/paylite-sut-*.jar > sut.log 2>&1 &
+        run: |
+          java -jar sut/target/paylite-sut-*.jar > sut.log 2>&1 &
+          echo "SUT_PID=$!" >> "$GITHUB_ENV"
 
       - name: Wait for the service
         run: |
           for i in $(seq 1 60); do
+            if ! kill -0 "$SUT_PID" 2>/dev/null; then
+              echo "Service process exited during startup"
+              cat sut.log
+              exit 1
+            fi
             if curl -s -o /dev/null --max-time 3 http://localhost:8080/; then
               echo "Service is up after ~$((i * 2))s"
               exit 0

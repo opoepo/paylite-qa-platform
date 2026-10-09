@@ -111,6 +111,31 @@ shape the most code:
   everywhere else, so failures are reproducible. Tests do not rely on a
   clean database.
 
+## How this was built
+
+I built this project with an AI assistant (Claude) as a pair: it proposed
+designs and code; I ran, reviewed and questioned every step and made the
+final decisions. AI output was treated as a hypothesis, not as an answer:
+
+- Every change was verified by running it — manual requests first, then
+  automated tests, then CI on Linux.
+- Decisions are recorded in ADRs together with the rejected alternatives,
+  so the reasoning can be checked regardless of who proposed it.
+- Several AI suggestions turned out to be wrong and were caught by that
+  verification:
+    - a Jackson setting assumed to block all type coercion did not cover text
+      fields — caught by test case AUTH-24
+      ([ADR-0014](docs/adr/0014-strict-json-input.md));
+    - an exception handler matched a subclass of the exception actually
+      thrown, so out-of-range amounts got the wrong error code — caught by
+      test case AUTH-22;
+    - a global RestAssured setting took effect too late for the first request
+      of a test run — found in code review and moved onto the request
+      specification;
+    - an ADR contradicted the API contract — found while implementing it and
+      corrected with a changelog entry
+      ([ADR-0010](docs/adr/0010-lazy-authorization-expiry.md)).
+
 ## Repository layout
 
 ```

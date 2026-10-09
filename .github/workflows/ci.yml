@@ -34,6 +34,8 @@ jobs:
 
       - name: Start the service
         run: java -jar sut/target/paylite-sut-*.jar > sut.log 2>&1 &
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5999/paylite
 
       - name: Wait for the service
         run: |

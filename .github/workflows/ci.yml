@@ -48,7 +48,7 @@ jobs:
               cat sut.log
               exit 1
             fi
-            if curl -s -o /dev/null --max-time 3 http://localhost:8080/; then
+            if curl -sf -o /dev/null --max-time 3 http://localhost:8080/actuator/health; then
               echo "Service is up after ~$((i * 2))s"
               exit 0
             fi

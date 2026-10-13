@@ -40,3 +40,12 @@ logging:
   level:
     root: INFO
     io.paylite: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: always

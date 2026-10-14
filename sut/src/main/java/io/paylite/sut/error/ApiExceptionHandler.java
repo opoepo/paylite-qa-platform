@@ -97,7 +97,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         }
 
         log.debug("Unreadable request body, cause: {}",
-                cause == null ? "none" : cause.getClass().getName(), ex);
+                cause == null ? "none" : cause.getClass().getSimpleName());
         return respond(problem(HttpStatus.BAD_REQUEST, "malformed_request", "Malformed request",
                 "Request body is missing or is not valid JSON", path(request)));
     }

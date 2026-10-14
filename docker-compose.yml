@@ -36,6 +36,19 @@ services:
       timeout: 3s
       retries: 20
       start_period: 20s
-
+  tests:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: paylite-tests
+    depends_on:
+      sut:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ./tests-java:/workspace
+      - maven-repo:/root/.m2
+    environment:
+      PAYLITE_BASE_URL: http://sut:8080
+    command: [ "mvn", "-B", "-ntp", "test" ]
 volumes:
   paylite-db-data:
+  maven-repo:

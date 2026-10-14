@@ -20,3 +20,4 @@ get a new ADR that references the old one.
 | [0012](0012-postgres-16-alpine-image.md) | postgres:16-alpine image | Accepted |
 | [0015](0015-microsecond-timestamps.md) | Timestamps at microsecond precision | Accepted |
 | [0016](0016-container-images.md) | Container images for the service | Accepted |
+| [0017](0017-tests-in-stock-maven-container.md) | Tests in a stock Maven container | Accepted |

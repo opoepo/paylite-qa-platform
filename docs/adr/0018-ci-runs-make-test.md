@@ -31,8 +31,9 @@ Fail-fast behaviour is kept inside the Makefile, so it works locally too:
 - One place to change how the stack is started.
 
 **Negative / trade-offs:**
-- No dependency or image caching between CI runs. Measured: about 1m 50s
-  per run, roughly 50s slower than the previous pipeline with
-  `setup-java` Maven caching. Local runs with warm caches: about 20s.
+- No dependency or image caching between CI runs. Measured over three
+  runs: 1m 40s to 2m 20s, versus 56s for the previous pipeline with
+  `setup-java` Maven caching. The spread comes from download speed on the
+  runners. Local runs with warm caches: about 20s.
 - Accepted for now. Revisit with Docker layer and volume caching if a run
   exceeds 4 minutes.

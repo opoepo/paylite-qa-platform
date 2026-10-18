@@ -21,3 +21,4 @@ get a new ADR that references the old one.
 | [0015](0015-microsecond-timestamps.md) | Timestamps at microsecond precision | Accepted |
 | [0016](0016-container-images.md) | Container images for the service | Accepted |
 | [0017](0017-tests-in-stock-maven-container.md) | Tests in a stock Maven container | Accepted |
+| [0018](0018-ci-runs-make-test.md) | CI runs the same `make test` as developers | Accepted |

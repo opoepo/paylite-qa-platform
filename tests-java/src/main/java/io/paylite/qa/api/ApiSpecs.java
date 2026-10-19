@@ -10,6 +10,7 @@ import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import io.qameta.allure.restassured.AllureRestAssured;
 
 /**
  * Settings shared by every request to the PayLite API.
@@ -39,6 +40,7 @@ public final class ApiSpecs {
                 .setBaseUri(TestConfig.baseUrl())
                 .setBasePath("/api/v1")
                 .setContentType(ContentType.JSON)
+                .addFilter(new AllureRestAssured())
                 .build();
     }
 }

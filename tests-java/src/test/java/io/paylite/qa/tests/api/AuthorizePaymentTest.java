@@ -122,6 +122,7 @@ class AuthorizePaymentTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("invalidValues")
+        @DisplayName("Invalid value is rejected")
         void rejectsInvalidValue(String caseName, AuthorizePaymentRequest request, Violation expected) {
             assertValidationFailed(payments.authorize(request), expected);
         }
@@ -148,6 +149,7 @@ class AuthorizePaymentTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("wrongJsonTypes")
+        @DisplayName("Value of the wrong JSON type is rejected")
         void rejectsWrongJsonType(String caseName, Map<String, Object> body, Violation expected) {
             assertValidationFailed(payments.authorizeRaw(body), expected);
         }

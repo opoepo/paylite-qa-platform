@@ -7,6 +7,7 @@ help:
 	@echo "make down   - stop and remove containers (data is kept)"
 	@echo "make clean  - remove containers, volumes and test reports"
 	@echo "make compile - compile the tests without starting anything"
+	@echo "make report - generate the Allure report from the last test run"
 
 compile:
 	docker compose run --rm --no-deps tests mvn -B -ntp test-compile
@@ -16,6 +17,9 @@ up:
 
 test: compile up
 	docker compose run --rm tests
+
+report:
+	docker compose run --rm --no-deps tests mvn -B -ntp allure:report
 
 logs:
 	docker compose logs sut

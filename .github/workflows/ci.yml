@@ -39,3 +39,36 @@ jobs:
             tests-java/target/surefire-reports/
             compose.log
           retention-days: 14
+
+      - name: Generate Allure report
+        if: always()
+        run: make report
+
+      - name: Upload Allure report for GitHub Pages
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: tests-java/target/site/allure-maven-plugin
+
+  publish-report:
+    name: Publish Allure report
+    needs: api-tests
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+
+    permissions:
+      pages: write
+      id-token: write
+
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -46,7 +46,12 @@ public class PaymentService {
         return payment;
     }
 
-    @Transactional
+    /**
+     * An expired hold is persisted as EXPIRED even though the capture fails:
+     * without noRollbackFor the exception would roll back the status change
+     * made by expireIfDue (ADR-0019).
+     */
+    @Transactional(noRollbackFor = AuthorizationExpiredException.class)
     public Payment capture(UUID id, long amount) {
         Payment payment = repository.findById(id)
                 .orElseThrow(() -> new PaymentNotFoundException(id));

@@ -68,6 +68,28 @@ so every test traces back to a requirement.
 | GET-02 | Unknown id | random UUID | 404 `payment_not_found`; `instance` equals request path | Errors | automated   |
 | GET-03 | Malformed id | `not-a-uuid` | 400 `malformed_request`; detail mentions `id` | Errors | manual-pass |
 
+## Capture — `POST /api/v1/payments/{id}/capture`
+
+"Unchanged" means the payment is still `AUTHORIZED` with `capturedAmount` 0.
+
+| ID | Case | Expected | Ref | Status |
+|---|---|---|---|---|
+| CAP-01 | Partial capture, 370 of 540 | 200; `CAPTURED`; `capturedAmount` 370; `authorizedAmount`, `refundedAmount`, currency, order reference, `createdAt`, `authorizationExpiresAt` unchanged; `updatedAt` moved forward | Rules 1, 3 | pending |
+| CAP-02 | Capture is persisted | `GET` returns exactly the capture response | Rules 1, 3 | pending |
+| CAP-03 | Capture of 1 (lower bound) | 200; `capturedAmount` 1 | Rule 5 | pending |
+| CAP-04 | Capture of the full authorized amount (upper bound) | 200; `capturedAmount` = `authorizedAmount` | Rule 1 | pending |
+| CAP-05 | Second capture | 409 `invalid_state`; payment unchanged by the second call | ADR-0009 | pending |
+| CAP-06 | Capture of `authorizedAmount + 1` | 422 `capture_exceeds_authorized`; payment unchanged | Rule 1 | pending |
+| CAP-07 | Capture of a cancelled payment | 409 `invalid_state` | Rule 3 | pending (after cancel) |
+| CAP-08 | Capture at `now == authorizationExpiresAt` | 409 `authorization_expired`; then `GET` returns `EXPIRED` with `updatedAt` equal to the moment of the failed capture | Rule 3, ADR-0010 | pending (needs controllable time) |
+| CAP-09 | Capture 1 µs before `authorizationExpiresAt` | 200 `CAPTURED` | Rule 3 | pending (needs controllable time) |
+| CAP-10 | Capture of a hold whose expiry was already persisted by `GET` | 409 `authorization_expired` | Errors | pending (needs controllable time) |
+| CAP-11 | Unknown payment | 404 `payment_not_found` | Errors | pending |
+| CAP-12 | Payment id is not a UUID | 400 `malformed_request` | Errors | pending |
+| CAP-13 | No `Idempotency-Key` | 400 `missing_idempotency_key` | Rule 7 | pending |
+| CAP-14 | Unknown field in the body | 400 `malformed_request` | Input typing | pending |
+| CAP-15 | Amount: 0, −5, 12.5, missing | 422 `validation_failed`: `amount` / `invalid_amount` or `required` | Rule 5 | pending |
+
 ## Lazy expiry
 
 Requires a short TTL (`--paylite.authorization-ttl=PT10S`) or a controllable clock.

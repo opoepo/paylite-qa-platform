@@ -91,4 +91,24 @@ public class Payment {
         }
         return false;
     }
+
+    /**
+     * Capture the actual amount (contract rules 1, 3, 5; ADR-0009).
+     * Checks run in a fixed order: expiry, then state, then amount.
+     */
+    public void capture(long amount, Instant now) {
+        expireIfDue(now);
+        if (status == PaymentStatus.EXPIRED) {
+            throw new AuthorizationExpiredException(authorizationExpiresAt);
+        }
+        if (status != PaymentStatus.AUTHORIZED) {
+            throw new InvalidStateException(status, "capture");
+        }
+        if (amount > authorizedAmount) {
+            throw new CaptureExceedsAuthorizedException(amount, authorizedAmount);
+        }
+        capturedAmount = amount;
+        status = PaymentStatus.CAPTURED;
+        updatedAt = now;
+    }
 }

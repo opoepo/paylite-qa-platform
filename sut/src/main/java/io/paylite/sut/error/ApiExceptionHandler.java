@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import io.paylite.sut.payment.Currency;
 import io.paylite.sut.payment.PaymentNotFoundException;
+import io.paylite.sut.payment.PaymentRuleViolation;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                                                         HttpServletRequest request) {
         return respond(problem(HttpStatus.NOT_FOUND, "payment_not_found",
                 "Payment not found", ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(PaymentRuleViolation.class)
+    public ResponseEntity<Object> handleRuleViolation(PaymentRuleViolation ex,
+                                                      HttpServletRequest request) {
+        return respond(problem(HttpStatus.valueOf(ex.httpStatus()), ex.code(),
+                ex.title(), ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(MissingIdempotencyKeyException.class)

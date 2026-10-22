@@ -45,4 +45,12 @@ public class PaymentService {
         payment.expireIfDue(clock.instant());
         return payment;
     }
+
+    @Transactional
+    public Payment capture(UUID id, long amount) {
+        Payment payment = repository.findById(id)
+                .orElseThrow(() -> new PaymentNotFoundException(id));
+        payment.capture(amount, clock.instant());
+        return payment;
+    }
 }

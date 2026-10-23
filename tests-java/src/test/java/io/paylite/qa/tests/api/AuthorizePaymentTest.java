@@ -34,7 +34,7 @@ class AuthorizePaymentTest {
     private final PaymentsClient payments = new PaymentsClient();
 
     @Nested
-    @DisplayName("Accepted requests")
+    @DisplayName("Authorize · accepted requests")
     class Accepted {
 
         @Test
@@ -108,7 +108,7 @@ class AuthorizePaymentTest {
     }
 
     @Nested
-    @DisplayName("Field validation → 422 validation_failed")
+    @DisplayName("Authorize · field validation → 422")
     class FieldValidation {
 
         @Test
@@ -189,7 +189,7 @@ class AuthorizePaymentTest {
     }
 
     @Nested
-    @DisplayName("Malformed requests → 400")
+    @DisplayName("Authorize · malformed requests → 400")
     class Malformed {
 
         @Test

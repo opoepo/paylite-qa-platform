@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("Read · by id")
 class GetPaymentTest {
 
     private final PaymentsClient payments = new PaymentsClient();

@@ -3,6 +3,7 @@ package io.paylite.qa.api;
 import io.paylite.qa.model.AuthorizePaymentRequest;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
+import io.paylite.qa.model.CapturePaymentRequest;
 
 import java.util.Map;
 import java.util.UUID;
@@ -77,6 +78,34 @@ public class PaymentsClient {
         return request()
         .when()
                 .get("/payments/{id}", paymentId);
+    }
+
+    public Response capture(UUID paymentId, CapturePaymentRequest request) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .body(request)
+                .when()
+                .post("/payments/{id}/capture", paymentId);
+    }
+
+    /** Capture without the mandatory header — protocol tests only. */
+    public Response captureWithoutIdempotencyKey(UUID paymentId, CapturePaymentRequest request) {
+        return request()
+                .body(request)
+                .when()
+                .post("/payments/{id}/capture", paymentId);
+    }
+
+    /**
+     * Capture with an id and a body the typed API cannot express:
+     * an id that is not a UUID, a Map with wrong JSON types.
+     */
+    public Response captureRaw(String paymentId, Object body) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .body(body)
+                .when()
+                .post("/payments/{id}/capture", paymentId);
     }
 
     private RequestSpecification request() {

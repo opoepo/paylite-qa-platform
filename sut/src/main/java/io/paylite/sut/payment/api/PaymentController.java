@@ -54,10 +54,15 @@ public class PaymentController {
         return PaymentResponse.from(service.capture(id, request.amount()));
     }
 
+    /**
+     * The body is optional. It is still read, so that any field is rejected
+     * as unknown instead of being silently ignored (ADR-0014).
+     */
     @PostMapping("/{id}/cancel")
     public PaymentResponse cancel(
             @PathVariable UUID id,
-            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestBody(required = false) CancelPaymentRequest body) {
         requireIdempotencyKey(idempotencyKey);
         return PaymentResponse.from(service.cancel(id));
     }

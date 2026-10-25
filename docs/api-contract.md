@@ -179,6 +179,8 @@ silently:
 - Amounts are JSON integers. `12.5` and `"100"` are both rejected.
 - Text fields accept JSON strings only. `123` and `true` are rejected.
 - Currencies are matched by exact name. `"usd"` and `0` are rejected.
+- Operations without a body (cancel) accept no body or an empty object `{}`;
+  any field is rejected as unknown.
 
 ## Endpoints
 

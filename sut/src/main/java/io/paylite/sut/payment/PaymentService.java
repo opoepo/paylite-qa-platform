@@ -58,4 +58,13 @@ public class PaymentService {
         payment.capture(amount, clock.instant());
         return payment;
     }
+
+    /** Same rollback rule as capture: an expired hold is persisted as EXPIRED (ADR-0019). */
+    @Transactional(noRollbackFor = AuthorizationExpiredException.class)
+    public Payment cancel(UUID id) {
+        Payment payment = repository.findById(id)
+                .orElseThrow(() -> new PaymentNotFoundException(id));
+        payment.cancel(clock.instant());
+        return payment;
+    }
 }

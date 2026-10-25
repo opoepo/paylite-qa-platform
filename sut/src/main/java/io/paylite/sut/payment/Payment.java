@@ -97,18 +97,33 @@ public class Payment {
      * Checks run in a fixed order: expiry, then state, then amount.
      */
     public void capture(long amount, Instant now) {
-        expireIfDue(now);
-        if (status == PaymentStatus.EXPIRED) {
-            throw new AuthorizationExpiredException(authorizationExpiresAt);
-        }
-        if (status != PaymentStatus.AUTHORIZED) {
-            throw new InvalidStateException(status, "capture");
-        }
+        requireLiveAuthorization(now, "capture");
         if (amount > authorizedAmount) {
             throw new CaptureExceedsAuthorizedException(amount, authorizedAmount);
         }
         capturedAmount = amount;
         status = PaymentStatus.CAPTURED;
         updatedAt = now;
+    }
+
+    /** Release the hold without moving money. Checks: expiry, then state. */
+    public void cancel(Instant now) {
+        requireLiveAuthorization(now, "cancel");
+        status = PaymentStatus.CANCELLED;
+        updatedAt = now;
+    }
+
+    /**
+     * The hold must not be expired and the payment must be AUTHORIZED.
+     * Expiry is evaluated first and may itself change the status (ADR-0010).
+     */
+    private void requireLiveAuthorization(Instant now, String operation) {
+        expireIfDue(now);
+        if (status == PaymentStatus.EXPIRED) {
+            throw new AuthorizationExpiredException(authorizationExpiresAt);
+        }
+        if (status != PaymentStatus.AUTHORIZED) {
+            throw new InvalidStateException(status, operation);
+        }
     }
 }

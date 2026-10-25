@@ -54,6 +54,14 @@ public class PaymentController {
         return PaymentResponse.from(service.capture(id, request.amount()));
     }
 
+    @PostMapping("/{id}/cancel")
+    public PaymentResponse cancel(
+            @PathVariable UUID id,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+        requireIdempotencyKey(idempotencyKey);
+        return PaymentResponse.from(service.cancel(id));
+    }
+
     private static void requireIdempotencyKey(String key) {
         if (key.isBlank()) {
             throw new MissingIdempotencyKeyException();

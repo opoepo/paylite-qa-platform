@@ -85,9 +85,9 @@ Anything not listed is a `409`.
 6. Expiry is evaluated lazily on read or operation, and persisted.
    A hold is expired when `now >= authorizationExpiresAt`.
 7. Every state-changing request requires an `Idempotency-Key` header.
-8. When a capture violates several rules, the first failing check wins:
-   expiry (`authorization_expired`), then state (`invalid_state`),
-   then amount (`capture_exceeds_authorized`).
+8. When an operation violates several rules, the first failing check wins:
+   expiry (`authorization_expired`), then state (`invalid_state`), then
+   amount (`capture_exceeds_authorized`, capture only).
 
 ## Idempotency
 

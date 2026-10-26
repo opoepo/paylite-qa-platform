@@ -2,10 +2,10 @@ package io.paylite.qa.tests.api;
 
 import io.paylite.qa.api.PaymentsClient;
 import io.paylite.qa.assertions.Violation;
-import io.paylite.qa.data.PaymentData;
 import io.paylite.qa.model.CapturePaymentRequest;
 import io.paylite.qa.model.PaymentResponse;
 import io.paylite.qa.model.PaymentStatus;
+import io.paylite.qa.steps.PaymentSteps;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,6 +28,8 @@ class CapturePaymentTest {
 
     private final PaymentsClient payments = new PaymentsClient();
 
+    private final PaymentSteps paymentSteps = new PaymentSteps(payments);
+
     @Nested
     @DisplayName("Capture · accepted")
     class Accepted {
@@ -35,47 +37,54 @@ class CapturePaymentTest {
         @Test
         @DisplayName("[CAP-01] Partial capture changes only the capture fields")
         void partialCapture() {
-            PaymentResponse before = authorizedPayment();
+            PaymentResponse authorized = paymentSteps.authorized();
 
-            PaymentResponse after = captureExpectingOk(before.id(), 370L);
+            PaymentResponse captured = payments.capture(authorized.id(), CapturePaymentRequest.of(370L))
+                    .then().statusCode(200)
+                    .extract().as(PaymentResponse.class);
 
             assertSoftly(softly -> {
-                softly.assertThat(after.status()).isEqualTo(PaymentStatus.CAPTURED);
-                softly.assertThat(after.capturedAmount()).isEqualTo(370L);
-                softly.assertThat(after.authorizedAmount()).isEqualTo(before.authorizedAmount());
-                softly.assertThat(after.refundedAmount()).isZero();
-                softly.assertThat(after.currency()).isEqualTo(before.currency());
-                softly.assertThat(after.orderReference()).isEqualTo(before.orderReference());
-                softly.assertThat(after.createdAt()).isEqualTo(before.createdAt());
-                softly.assertThat(after.authorizationExpiresAt()).isEqualTo(before.authorizationExpiresAt());
-                softly.assertThat(after.updatedAt()).isAfter(before.updatedAt());
+                softly.assertThat(captured.status()).isEqualTo(PaymentStatus.CAPTURED);
+                softly.assertThat(captured.capturedAmount()).isEqualTo(370L);
+                softly.assertThat(captured.authorizedAmount()).isEqualTo(authorized.authorizedAmount());
+                softly.assertThat(captured.refundedAmount()).isZero();
+                softly.assertThat(captured.currency()).isEqualTo(authorized.currency());
+                softly.assertThat(captured.orderReference()).isEqualTo(authorized.orderReference());
+                softly.assertThat(captured.createdAt()).isEqualTo(authorized.createdAt());
+                softly.assertThat(captured.authorizationExpiresAt()).isEqualTo(authorized.authorizationExpiresAt());
+                softly.assertThat(captured.updatedAt()).isAfter(authorized.updatedAt());
             });
         }
 
         @Test
         @DisplayName("[CAP-02] Capture is persisted")
         void captureIsPersisted() {
-            PaymentResponse captured = captureExpectingOk(authorizedPayment().id(), 370L);
+            PaymentResponse captured = paymentSteps.captured(370L);
 
-            assertThat(fetch(captured.id())).isEqualTo(captured);
+            assertThat(paymentSteps.fetch(captured.id())).isEqualTo(captured);
         }
 
         @Test
         @DisplayName("[CAP-03] Capture of 1 is accepted (lower bound)")
         void captureOfOne() {
-            PaymentResponse captured = captureExpectingOk(authorizedPayment().id(), 1L);
+            PaymentResponse authorized = paymentSteps.authorized();
 
+            PaymentResponse captured = payments.capture(authorized.id(), CapturePaymentRequest.of(1L))
+                    .then().statusCode(200)
+                    .extract().as(PaymentResponse.class);
             assertThat(captured.capturedAmount()).isEqualTo(1L);
         }
 
         @Test
         @DisplayName("[CAP-04] Capture of the full authorized amount is accepted (upper bound)")
         void captureOfFullAmount() {
-            PaymentResponse before = authorizedPayment();
+            PaymentResponse authorized = paymentSteps.authorized();
 
-            PaymentResponse captured = captureExpectingOk(before.id(), before.authorizedAmount());
+            PaymentResponse captured = payments.capture(authorized.id(), CapturePaymentRequest.of(authorized.authorizedAmount()))
+                    .then().statusCode(200)
+                    .extract().as(PaymentResponse.class);
 
-            assertThat(captured.capturedAmount()).isEqualTo(before.authorizedAmount());
+            assertThat(captured.capturedAmount()).isEqualTo(authorized.authorizedAmount());
         }
     }
 
@@ -86,7 +95,7 @@ class CapturePaymentTest {
         @Test
         @DisplayName("[CAP-05] Second capture is rejected and changes nothing")
         void secondCapture() {
-            PaymentResponse captured = captureExpectingOk(authorizedPayment().id(), 370L);
+            PaymentResponse captured = paymentSteps.captured(370L);
 
             assertProblem(payments.capture(captured.id(), CapturePaymentRequest.of(370L)),
                     409, "invalid_state");
@@ -97,12 +106,23 @@ class CapturePaymentTest {
         @Test
         @DisplayName("[CAP-06] Capture above the authorized amount is rejected and changes nothing")
         void captureAboveAuthorized() {
-            PaymentResponse before = authorizedPayment();
+            PaymentResponse authorized = paymentSteps.authorized();
 
-            assertProblem(payments.capture(before.id(), CapturePaymentRequest.of(before.authorizedAmount() + 1)),
+            assertProblem(payments.capture(authorized.id(), CapturePaymentRequest.of(authorized.authorizedAmount() + 1)),
                     422, "capture_exceeds_authorized");
 
-            assertUnchanged(before);
+            assertUnchanged(authorized);
+        }
+
+        @Test
+        @DisplayName("[CAP-07] Capture of a cancelled payment")
+        void captureOfACancelledPayment() {
+            PaymentResponse cancelled = paymentSteps.cancelled();
+
+            assertProblem(payments.capture(cancelled.id(), CapturePaymentRequest.of(370L)),
+                    409, "invalid_state");
+
+            assertUnchanged(cancelled);
         }
     }
 
@@ -127,35 +147,35 @@ class CapturePaymentTest {
         @Test
         @DisplayName("[CAP-13] Missing Idempotency-Key is rejected")
         void missingIdempotencyKey() {
-            PaymentResponse before = authorizedPayment();
+            PaymentResponse authorized = paymentSteps.authorized();
 
-            assertProblem(payments.captureWithoutIdempotencyKey(before.id(), CapturePaymentRequest.of(370L)),
+            assertProblem(payments.captureWithoutIdempotencyKey(authorized.id(), CapturePaymentRequest.of(370L)),
                     400, "missing_idempotency_key");
 
-            assertUnchanged(before);
+            assertUnchanged(authorized);
         }
 
         @Test
         @DisplayName("[CAP-14] Unknown field in the body is rejected")
         void unknownField() {
-            PaymentResponse before = authorizedPayment();
+            PaymentResponse authorized = paymentSteps.authorized();
 
-            assertProblem(payments.captureRaw(before.id().toString(),
+            assertProblem(payments.captureRaw(authorized.id().toString(),
                             Map.of("amount", 370, "status", "CAPTURED")),
                     400, "malformed_request");
 
-            assertUnchanged(before);
+            assertUnchanged(authorized);
         }
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("invalidAmounts")
         @DisplayName("Invalid amount is rejected")
         void invalidAmount(String caseName, Map<String, Object> body, Violation expected) {
-            PaymentResponse before = authorizedPayment();
+            PaymentResponse authorized = paymentSteps.authorized();
 
-            assertValidationFailed(payments.captureRaw(before.id().toString(), body), expected);
+            assertValidationFailed(payments.captureRaw(authorized.id().toString(), body), expected);
 
-            assertUnchanged(before);
+            assertUnchanged(authorized);
         }
 
         static Stream<Arguments> invalidAmounts() {
@@ -170,27 +190,10 @@ class CapturePaymentTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private PaymentResponse authorizedPayment() {
-        return payments.authorize(PaymentData.validAuthorization())
-                .then().statusCode(201)
-                .extract().as(PaymentResponse.class);
-    }
-
-    private PaymentResponse captureExpectingOk(UUID paymentId, long amount) {
-        return payments.capture(paymentId, CapturePaymentRequest.of(amount))
-                .then().statusCode(200)
-                .extract().as(PaymentResponse.class);
-    }
-
-    private PaymentResponse fetch(UUID paymentId) {
-        return payments.get(paymentId)
-                .then().statusCode(200)
-                .extract().as(PaymentResponse.class);
-    }
 
     /** A rejected operation must leave no trace: every field, including updatedAt, is the same. */
     private void assertUnchanged(PaymentResponse expected) {
-        assertThat(fetch(expected.id()))
+        assertThat(paymentSteps.fetch(expected.id()))
                 .as("payment after the rejected operation")
                 .isEqualTo(expected);
     }

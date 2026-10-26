@@ -1,9 +1,9 @@
 package io.paylite.qa.api;
 
 import io.paylite.qa.model.AuthorizePaymentRequest;
+import io.paylite.qa.model.CapturePaymentRequest;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-import io.paylite.qa.model.CapturePaymentRequest;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,30 +25,38 @@ public class PaymentsClient {
         this(Map.of());
     }
 
-    /** A client that sends these headers with every request, e.g. Accept-Language. */
+    /**
+     * A client that sends these headers with every request, e.g. Accept-Language.
+     */
     public PaymentsClient(Map<String, String> extraHeaders) {
         this.extraHeaders = Map.copyOf(extraHeaders);
     }
 
-    /** Authorize with a fresh idempotency key — the usual case. */
+    /**
+     * Authorize with a fresh idempotency key — the usual case.
+     */
     public Response authorize(AuthorizePaymentRequest request) {
         return authorize(request, UUID.randomUUID().toString());
     }
 
-    /** Authorize with a chosen key — for idempotency tests. */
+    /**
+     * Authorize with a chosen key — for idempotency tests.
+     */
     public Response authorize(AuthorizePaymentRequest request, String idempotencyKey) {
         return request()
                 .header(IDEMPOTENCY_HEADER, idempotencyKey)
                 .body(request)
-        .when()
+                .when()
                 .post("/payments");
     }
 
-    /** Authorize without the mandatory header — protocol tests only. */
+    /**
+     * Authorize without the mandatory header — protocol tests only.
+     */
     public Response authorizeWithoutIdempotencyKey(AuthorizePaymentRequest request) {
         return request()
                 .body(request)
-        .when()
+                .when()
                 .post("/payments");
     }
 
@@ -60,23 +68,25 @@ public class PaymentsClient {
         return request()
                 .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
                 .body(body)
-        .when()
+                .when()
                 .post("/payments");
     }
 
-    /** Same as authorizeRaw, with a chosen Content-Type — protocol tests only. */
+    /**
+     * Same as authorizeRaw, with a chosen Content-Type — protocol tests only.
+     */
     public Response authorizeRaw(Object body, String contentType) {
         return request()
                 .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
                 .contentType(contentType)
                 .body(body)
-        .when()
+                .when()
                 .post("/payments");
     }
 
     public Response get(UUID paymentId) {
         return request()
-        .when()
+                .when()
                 .get("/payments/{id}", paymentId);
     }
 
@@ -88,7 +98,9 @@ public class PaymentsClient {
                 .post("/payments/{id}/capture", paymentId);
     }
 
-    /** Capture without the mandatory header — protocol tests only. */
+    /**
+     * Capture without the mandatory header — protocol tests only.
+     */
     public Response captureWithoutIdempotencyKey(UUID paymentId, CapturePaymentRequest request) {
         return request()
                 .body(request)
@@ -106,6 +118,43 @@ public class PaymentsClient {
                 .body(body)
                 .when()
                 .post("/payments/{id}/capture", paymentId);
+    }
+
+    public Response cancel(UUID paymentId) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .when()
+                .post("/payments/{id}/cancel", paymentId);
+    }
+
+    /**
+     * Cancel without the mandatory header — protocol tests only.
+     */
+    public Response cancelWithoutIdempotencyKey(UUID paymentId) {
+        return request()
+                .when()
+                .post("/payments/{id}/cancel", paymentId);
+    }
+
+    /**
+     * Cancel with an id that is not a UUID - protocol tests only.
+     */
+    public Response cancelRaw(String paymentId) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .when()
+                .post("/payments/{id}/cancel", paymentId);
+    }
+
+    /**
+     * Cancel with request body - protocol tests only.
+     */
+    public Response cancelWithBody(UUID paymentId, Object body) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .body(body)
+                .when()
+                .post("/payments/{id}/cancel", paymentId);
     }
 
     private RequestSpecification request() {

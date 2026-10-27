@@ -114,6 +114,27 @@ public class Payment {
     }
 
     /**
+     * Return part or all of the captured amount (contract rule 2).
+     * Allowed from CAPTURED and PARTIALLY_REFUNDED; may be repeated
+     * until the captured amount is exhausted.
+     */
+    public void refund(long amount, Instant now) {
+        expireIfDue(now);
+        if (status != PaymentStatus.CAPTURED && status != PaymentStatus.PARTIALLY_REFUNDED) {
+            throw new InvalidStateException(status, "refund");
+        }
+        long refundable = capturedAmount - refundedAmount;
+        if (amount > refundable) {
+            throw new RefundExceedsCapturedException(amount, refundable);
+        }
+        refundedAmount += amount;
+        status = refundedAmount == capturedAmount
+                ? PaymentStatus.REFUNDED
+                : PaymentStatus.PARTIALLY_REFUNDED;
+        updatedAt = now;
+    }
+
+    /**
      * The hold must not be expired and the payment must be AUTHORIZED.
      * Expiry is evaluated first and may itself change the status (ADR-0010).
      */

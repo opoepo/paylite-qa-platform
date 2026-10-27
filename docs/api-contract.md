@@ -11,13 +11,13 @@ idempotency, multi-currency amounts.
 
 **Explicitly out of scope:**
 
-| Not modelled | Why |
-|---|---|
-| Card data (PAN, CVV) | Would pull the service into PCI DSS scope. Tokens only. |
-| PSP integration | This is a stand-in for a payment layer, not a gateway. |
-| Products / line items | Belongs to the order service. This layer deals in amounts. |
-| Multiple captures | One capture closes the window. Complexity without test value. |
-| Background schedulers | Expiry is evaluated lazily, to keep tests deterministic. |
+| Not modelled          | Why                                                           |
+|-----------------------|---------------------------------------------------------------|
+| Card data (PAN, CVV)  | Would pull the service into PCI DSS scope. Tokens only.       |
+| PSP integration       | This is a stand-in for a payment layer, not a gateway.        |
+| Products / line items | Belongs to the order service. This layer deals in amounts.    |
+| Multiple captures     | One capture closes the window. Complexity without test value. |
+| Background schedulers | Expiry is evaluated lazily, to keep tests deterministic.      |
 
 ## Money
 
@@ -25,10 +25,10 @@ All amounts are **integers in minor units**. No floating point anywhere near
 money. `12.34 USD` is transported as `1234`.
 
 | Currency | Exponent | 1.00 is |
-|---|---|---|
-| USD | 2 | 100 |
-| EUR | 2 | 100 |
-| VND | 0 | 1 |
+|----------|----------|---------|
+| USD      | 2        | 100     |
+| EUR      | 2        | 100     |
+| VND      | 0        | 1       |
 
 VND has exponent 0 — a naive `amount * 100` conversion is wrong for it.
 
@@ -51,14 +51,14 @@ VND has exponent 0 — a naive `amount * 100` conversion is wrong for it.
 
 ## State machine
 
-| Status | Meaning | Invariants | Next |
-|---|---|---|---|
-| `AUTHORIZED` | funds held, merchant has nothing | `captured = 0`, `refunded = 0` | CAPTURED, CANCELLED, EXPIRED |
-| `CANCELLED` | hold released, no movement | `captured = 0` | terminal |
-| `EXPIRED` | hold timed out, no movement | `captured = 0` | terminal |
-| `CAPTURED` | funds moved to merchant | `0 < captured <= authorized`, `refunded = 0` | PARTIALLY_REFUNDED, REFUNDED |
-| `PARTIALLY_REFUNDED` | part returned | `0 < refunded < captured` | PARTIALLY_REFUNDED, REFUNDED |
-| `REFUNDED` | everything returned | `refunded = captured` | terminal |
+| Status               | Meaning                          | Invariants                                   | Next                         |
+|----------------------|----------------------------------|----------------------------------------------|------------------------------|
+| `AUTHORIZED`         | funds held, merchant has nothing | `captured = 0`, `refunded = 0`               | CAPTURED, CANCELLED, EXPIRED |
+| `CANCELLED`          | hold released, no movement       | `captured = 0`                               | terminal                     |
+| `EXPIRED`            | hold timed out, no movement      | `captured = 0`                               | terminal                     |
+| `CAPTURED`           | funds moved to merchant          | `0 < captured <= authorized`, `refunded = 0` | PARTIALLY_REFUNDED, REFUNDED |
+| `PARTIALLY_REFUNDED` | part returned                    | `0 < refunded < captured`                    | PARTIALLY_REFUNDED, REFUNDED |
+| `REFUNDED`           | everything returned              | `refunded = captured`                        | terminal                     |
 
 Allowed transitions:
 
@@ -86,8 +86,11 @@ Anything not listed is a `409`.
    A hold is expired when `now >= authorizationExpiresAt`.
 7. Every state-changing request requires an `Idempotency-Key` header.
 8. When an operation violates several rules, the first failing check wins:
-   expiry (`authorization_expired`), then state (`invalid_state`), then
-   amount (`capture_exceeds_authorized`, capture only).
+   expiry, then state, then amount. Capture: `authorization_expired`,
+   `invalid_state`, `capture_exceeds_authorized`. Cancel:
+   `authorization_expired`, `invalid_state`. Refund: `invalid_state`,
+   `refund_exceeds_captured` — a refund is never `authorization_expired`,
+   because the hold no longer matters once funds were captured.
 
 ## Idempotency
 
@@ -117,8 +120,16 @@ Validation example:
   "detail": "One or more fields are invalid",
   "instance": "/api/v1/payments",
   "errors": [
-    { "field": "amount",   "code": "invalid_amount",       "message": "must be a positive integer in minor units" },
-    { "field": "currency", "code": "unsupported_currency", "message": "must be one of USD, EUR, VND" }
+    {
+      "field": "amount",
+      "code": "invalid_amount",
+      "message": "must be a positive integer in minor units"
+    },
+    {
+      "field": "currency",
+      "code": "unsupported_currency",
+      "message": "must be one of USD, EUR, VND"
+    }
   ]
 }
 ```
@@ -138,28 +149,28 @@ State conflict example:
 
 ### Top-level codes
 
-| Code | HTTP | When |
-|---|---|---|
-| `malformed_request` | 400 | body is not parseable JSON, contains an unknown field, or a path parameter has the wrong format |
-| `missing_idempotency_key` | 400 | header absent on a write operation |
-| `payment_not_found` | 404 | unknown id |
-| `invalid_state` | 409 | operation not allowed from current status |
-| `authorization_expired` | 409 | capture or cancel on an expired hold — whether expiry was just detected or already persisted |
-| `idempotency_key_reuse` | 409 | same key, different body |
-| `validation_failed` | 422 | one or more fields are invalid — see `errors[]` |
-| `capture_exceeds_authorized` | 422 | capture > authorized |
-| `refund_exceeds_captured` | 422 | refund > captured - already refunded |
-| `internal_error` | 500 | unexpected failure; details are logged, never returned |
+| Code                         | HTTP | When                                                                                            |
+|------------------------------|------|-------------------------------------------------------------------------------------------------|
+| `malformed_request`          | 400  | body is not parseable JSON, contains an unknown field, or a path parameter has the wrong format |
+| `missing_idempotency_key`    | 400  | header absent on a write operation                                                              |
+| `payment_not_found`          | 404  | unknown id                                                                                      |
+| `invalid_state`              | 409  | operation not allowed from current status                                                       |
+| `authorization_expired`      | 409  | capture or cancel on an expired hold — whether expiry was just detected or already persisted    |
+| `idempotency_key_reuse`      | 409  | same key, different body                                                                        |
+| `validation_failed`          | 422  | one or more fields are invalid — see `errors[]`                                                 |
+| `capture_exceeds_authorized` | 422  | capture > authorized                                                                            |
+| `refund_exceeds_captured`    | 422  | refund > captured - already refunded                                                            |
+| `internal_error`             | 500  | unexpected failure; details are logged, never returned                                          |
 
 ### Field codes (inside `errors[]`)
 
-| Code | Message | When |
-|---|---|---|
-| `required` | is required | field missing, null or blank |
-| `too_long` | is too long | exceeds maximum length |
-| `invalid_amount` | must be a positive integer in minor units | non-positive, fractional, non-numeric, a string, or beyond the 64-bit range |
-| `unsupported_currency` | must be one of USD, EUR, VND | unknown code, wrong case, or a number |
-| `invalid_value` | has an invalid value | any other type mismatch, e.g. a number where text is expected |
+| Code                   | Message                                   | When                                                                        |
+|------------------------|-------------------------------------------|-----------------------------------------------------------------------------|
+| `required`             | is required                               | field missing, null or blank                                                |
+| `too_long`             | is too long                               | exceeds maximum length                                                      |
+| `invalid_amount`       | must be a positive integer in minor units | non-positive, fractional, non-numeric, a string, or beyond the 64-bit range |
+| `unsupported_currency` | must be one of USD, EUR, VND              | unknown code, wrong case, or a number                                       |
+| `invalid_value`        | has an invalid value                      | any other type mismatch, e.g. a number where text is expected               |
 
 Messages are fixed English strings keyed by code. They never depend on
 server locale or on the client's `Accept-Language`.
@@ -228,12 +239,10 @@ Idempotency-Key: <uuid>
 POST /api/v1/payments/{id}/refund
 Idempotency-Key: <uuid>
 
-{ "amount": 220, "reason": "rotten_produce" }
+{ "amount": 220 }
 
 200 -> Payment, status = PARTIALLY_REFUNDED | REFUNDED
 ```
-
-`reason` is optional and free-form.
 
 ### Cancel
 
@@ -248,12 +257,12 @@ Idempotency-Key: <uuid>
 
 Groceries: 1.5 kg bananas at 2.00 plus milk at 1.50, expected 4.50 USD.
 
-| Step | Call | Result |
-|---|---|---|
-| checkout, +20% buffer | `POST /payments` amount 540 | AUTHORIZED, authorized 540 |
-| picker packs 1.1 kg | `POST /capture` amount 370 | CAPTURED, captured 370 |
-| bananas were rotten | `POST /refund` amount 220 | PARTIALLY_REFUNDED, refunded 220 |
-| milk was sour too | `POST /refund` amount 150 | REFUNDED, refunded 370 |
+| Step                  | Call                        | Result                           |
+|-----------------------|-----------------------------|----------------------------------|
+| checkout, +20% buffer | `POST /payments` amount 540 | AUTHORIZED, authorized 540       |
+| picker packs 1.1 kg   | `POST /capture` amount 370  | CAPTURED, captured 370           |
+| bananas were rotten   | `POST /refund` amount 220   | PARTIALLY_REFUNDED, refunded 220 |
+| milk was sour too     | `POST /refund` amount 150   | REFUNDED, refunded 370           |
 
 The remaining 170 of the hold is released by the bank on capture.
 
@@ -261,11 +270,12 @@ The remaining 170 of the hold is released by the bank on capture.
 
 Gaps found while specifying. Resolved ones move into rules above.
 
-| # | Question | Status |
-|---|---|---|
-| 1 | Actual total exceeds the authorized buffer | Rejected with 422. The order service re-authorizes. Overcapture deliberately unsupported. |
-| 2 | List filter by status returns never-accessed expired holds as AUTHORIZED | Open. Decide when implementing GET /payments. |
-| 3 | Capture on a hold already persisted as EXPIRED: `authorization_expired` or `invalid_state`? | Resolved: always `authorization_expired`. The response must not depend on whether the payment was read earlier. Refund on EXPIRED stays `invalid_state`. |
+| # | Question                                                                                    | Status                                                                                                                                                        |
+|---|---------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | Actual total exceeds the authorized buffer                                                  | Rejected with 422. The order service re-authorizes. Overcapture deliberately unsupported.                                                                     |
+| 2 | List filter by status returns never-accessed expired holds as AUTHORIZED                    | Open. Decide when implementing GET /payments.                                                                                                                 |
+| 3 | Capture on a hold already persisted as EXPIRED: `authorization_expired` or `invalid_state`? | Resolved: always `authorization_expired`. The response must not depend on whether the payment was read earlier. Refund on EXPIRED stays `invalid_state`.      |
+| 4 | Refund reason and refund history                                                            | Deferred: storing a reason requires a refund record per operation. `reason` removed from the contract until then; sending it is rejected as an unknown field. |
 
 ## Implementation order
 

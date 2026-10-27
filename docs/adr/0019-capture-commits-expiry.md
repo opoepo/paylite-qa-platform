@@ -20,8 +20,18 @@ query that selects rows by status.
 
 ## Decision
 
-`PaymentService.capture` is annotated
-`@Transactional(noRollbackFor = AuthorizationExpiredException.class)`.
+Every service operation that changes a payment is annotated
+`@Transactional(noRollbackFor = PaymentRuleViolation.class)`.
+
+This relies on an invariant of the domain methods:
+
+1. `expireIfDue` is the only change that may happen before rule checks;
+2. all rule checks run before any other change;
+3. state changes happen only after every check has passed.
+
+Under this invariant, a business-rule rejection can only leave the expiry
+behind, which is correct and must be persisted. Any other exception —
+database errors, bugs, unexpected failures — still rolls back.
 
 ## Rationale
 
@@ -38,3 +48,12 @@ query that selects rows by status.
 - Test case CAP-08 asserts `updatedAt` equals the moment of the failed
   capture; a status-only assertion would not detect this defect.
 - Cancel and refund will throw the same exception and need the same rule.
+
+
+## Changelog
+
+- 2026-10-27: Generalized from `AuthorizationExpiredException` to the
+  whole `PaymentRuleViolation` family. Refund showed the same defect
+  through a different exception: an expired hold followed by
+  `InvalidStateException`. The invariant above is now explicit; a domain
+  method that changes a field before a rule check would break it.

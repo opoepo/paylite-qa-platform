@@ -46,25 +46,32 @@ public class PaymentService {
         return payment;
     }
 
-    /**
-     * An expired hold is persisted as EXPIRED even though the capture fails:
-     * without noRollbackFor the exception would roll back the status change
-     * made by expireIfDue (ADR-0019).
-     */
-    @Transactional(noRollbackFor = AuthorizationExpiredException.class)
+    /** Rule violations do not roll back the expiry set by expireIfDue (ADR-0019). */
+    @Transactional(noRollbackFor = PaymentRuleViolation.class)
     public Payment capture(UUID id, long amount) {
-        Payment payment = repository.findById(id)
-                .orElseThrow(() -> new PaymentNotFoundException(id));
+        Payment payment = load(id);
         payment.capture(amount, clock.instant());
         return payment;
     }
 
-    /** Same rollback rule as capture: an expired hold is persisted as EXPIRED (ADR-0019). */
-    @Transactional(noRollbackFor = AuthorizationExpiredException.class)
+    /** Rule violations do not roll back the expiry set by expireIfDue (ADR-0019). */
+    @Transactional(noRollbackFor = PaymentRuleViolation.class)
     public Payment cancel(UUID id) {
-        Payment payment = repository.findById(id)
-                .orElseThrow(() -> new PaymentNotFoundException(id));
+        Payment payment = load(id);
         payment.cancel(clock.instant());
         return payment;
+    }
+
+    /** Rule violations do not roll back the expiry set by expireIfDue (ADR-0019). */
+    @Transactional(noRollbackFor = PaymentRuleViolation.class)
+    public Payment refund(UUID id, long amount) {
+        Payment payment = load(id);
+        payment.refund(amount, clock.instant());
+        return payment;
+    }
+
+    private Payment load(UUID id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new PaymentNotFoundException(id));
     }
 }

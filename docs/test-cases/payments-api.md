@@ -80,7 +80,7 @@ so every test traces back to a requirement.
 | CAP-04 | Capture of the full authorized amount (upper bound) | 200; `capturedAmount` = `authorizedAmount` | Rule 1 | automated |
 | CAP-05 | Second capture | 409 `invalid_state`; payment unchanged by the second call | ADR-0009 | automated |
 | CAP-06 | Capture of `authorizedAmount + 1` | 422 `capture_exceeds_authorized`; payment unchanged | Rule 1 | automated |
-| CAP-07 | Capture of a cancelled payment | 409 `invalid_state` | Rule 3 | pending |
+| CAP-07 | Capture of a cancelled payment | 409 `invalid_state` | Rule 3 | automated |
 | CAP-08 | Capture at `now == authorizationExpiresAt` | 409 `authorization_expired`; then `GET` returns `EXPIRED` with `updatedAt` equal to the moment of the failed capture | Rule 3, ADR-0010 | pending (needs controllable time) |
 | CAP-09 | Capture 1 µs before `authorizationExpiresAt` | 200 `CAPTURED` | Rule 3 | pending (needs controllable time) |
 | CAP-10 | Capture of a hold whose expiry was already persisted by `GET` | 409 `authorization_expired` | Errors | pending (needs controllable time) |
@@ -96,21 +96,21 @@ so every test traces back to a requirement.
 
 | ID | Case | Expected | Ref | Status |
 |---|---|---|---|---|
-| CNL-01 | Cancel an authorized payment | 200; `CANCELLED`; `capturedAmount` 0; `authorizedAmount`, `refundedAmount`, currency, order reference, `createdAt`, `authorizationExpiresAt` unchanged; `updatedAt` moved forward | State machine | pending |
-| CNL-02 | Cancel is persisted | `GET` returns exactly the cancel response | State machine | pending |
-| CNL-03 | Cancel a captured payment | 409 `invalid_state`; unchanged | Rule 8 | pending |
-| CNL-04 | Second cancel | 409 `invalid_state`; unchanged by the second call | Rule 8 | pending |
+| CNL-01 | Cancel an authorized payment | 200; `CANCELLED`; `capturedAmount` 0; `authorizedAmount`, `refundedAmount`, currency, order reference, `createdAt`, `authorizationExpiresAt` unchanged; `updatedAt` moved forward | State machine | automated |
+| CNL-02 | Cancel is persisted | `GET` returns exactly the cancel response | State machine | automated |
+| CNL-03 | Cancel a captured payment | 409 `invalid_state`; unchanged | Rule 8 | automated |
+| CNL-04 | Second cancel | 409 `invalid_state`; unchanged by the second call | Rule 8 | automated |
 | CNL-05 | Cancel a partially refunded payment | 409 `invalid_state` | Rule 8 | pending (after refund) |
 | CNL-06 | Cancel a fully refunded payment | 409 `invalid_state` | Rule 8 | pending (after refund) |
 | CNL-07 | Cancel at `now == authorizationExpiresAt` | 409 `authorization_expired`; then `GET` returns `EXPIRED` with `updatedAt` equal to the moment of the failed cancel | Rule 8, ADR-0019 | pending (needs controllable time) |
 | CNL-08 | Cancel 1 µs before `authorizationExpiresAt` | 200 `CANCELLED` | Rule 6 | pending (needs controllable time) |
 | CNL-09 | Cancel a hold whose expiry was already persisted by `GET` | 409 `authorization_expired` | Errors | pending (needs controllable time) |
 | CNL-10 | Cancelled payment after its hold expiry time | `GET` returns `CANCELLED`, not `EXPIRED` | ADR-0010 | pending (needs controllable time) |
-| CNL-11 | Unknown payment | 404 `payment_not_found` | Errors | pending |
-| CNL-12 | Payment id is not a UUID | 400 `malformed_request` | Errors | pending |
-| CNL-13 | No `Idempotency-Key` | 400 `missing_idempotency_key`; unchanged | Rule 7 | pending |
-| CNL-14 | Body with a field | 400 `malformed_request`; detail names the field; unchanged | Input typing | pending |
-| CNL-15 | Empty object `{}` as body | 200 `CANCELLED` | Input typing | pending |
+| CNL-11 | Unknown payment | 404 `payment_not_found` | Errors | automated |
+| CNL-12 | Payment id is not a UUID | 400 `malformed_request` | Errors | automated |
+| CNL-13 | No `Idempotency-Key` | 400 `missing_idempotency_key`; unchanged | Rule 7 | automated |
+| CNL-14 | Body with a field | 400 `malformed_request`; detail names the field; unchanged | Input typing | automated |
+| CNL-15 | Empty object `{}` as body | 200 `CANCELLED` | Input typing | automated |
 
 ## Lazy expiry
 

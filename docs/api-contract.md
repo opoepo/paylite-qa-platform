@@ -149,6 +149,9 @@ State conflict example:
 
 ### Top-level codes
 
+When a request violates several rules, only the first failing check is
+reported — see Business rule 8 for the order.
+
 | Code                         | HTTP | When                                                                                            |
 |------------------------------|------|-------------------------------------------------------------------------------------------------|
 | `malformed_request`          | 400  | body is not parseable JSON, contains an unknown field, or a path parameter has the wrong format |

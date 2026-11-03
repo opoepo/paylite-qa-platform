@@ -2,6 +2,7 @@ package io.paylite.qa.api;
 
 import io.paylite.qa.model.AuthorizePaymentRequest;
 import io.paylite.qa.model.CapturePaymentRequest;
+import io.paylite.qa.model.RefundPaymentRequest;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
@@ -155,6 +156,46 @@ public class PaymentsClient {
                 .body(body)
                 .when()
                 .post("/payments/{id}/cancel", paymentId);
+    }
+
+    public Response refund(UUID paymentId, RefundPaymentRequest request) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .body(request)
+                .when()
+                .post("/payments/{id}/refund", paymentId);
+    }
+
+    /**
+     * Refund without the mandatory header - protocol tests only
+     */
+    public Response refundWithoutIdempotencyKey(UUID paymentId, RefundPaymentRequest request) {
+        return request()
+                .body(request)
+                .when()
+                .post("/payments/{id}/refund", paymentId);
+    }
+
+    /**
+     * Refund with an id and a body the typed API cannot express:
+     * an id that is not a UUID, a Map with wrong JSON types.
+     */
+    public Response refundRaw(String paymentId, Object body) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .body(body)
+                .when()
+                .post("/payments/{id}/refund", paymentId);
+    }
+
+    /**
+     * Refund without request body - protocol tests only
+     */
+    public Response refundWithoutBody(UUID paymentId) {
+        return request()
+                .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+                .when()
+                .post("/payments/{id}/refund", paymentId);
     }
 
     private RequestSpecification request() {

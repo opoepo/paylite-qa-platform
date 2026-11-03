@@ -4,6 +4,7 @@ import io.paylite.qa.api.PaymentsClient;
 import io.paylite.qa.data.PaymentData;
 import io.paylite.qa.model.CapturePaymentRequest;
 import io.paylite.qa.model.PaymentResponse;
+import io.paylite.qa.model.RefundPaymentRequest;
 
 import java.util.UUID;
 
@@ -54,6 +55,17 @@ public class PaymentSteps {
         UUID paymentId = authorized().id();
 
         return payments.cancel(paymentId)
+                .then().statusCode(200)
+                .extract().as(PaymentResponse.class);
+    }
+
+    /**
+     * A payment captured for captureAmount, then refunded for refundAmount.
+     */
+    public PaymentResponse refunded(long captureAmount, long refundAmount) {
+        UUID paymentId = captured(captureAmount).id();
+
+        return payments.refund(paymentId, RefundPaymentRequest.of(refundAmount))
                 .then().statusCode(200)
                 .extract().as(PaymentResponse.class);
     }

@@ -1,10 +1,12 @@
 package io.paylite.qa.tests.api;
 
 import io.paylite.qa.api.PaymentsClient;
+import io.paylite.qa.model.CapturePaymentRequest;
 import io.paylite.qa.model.PaymentResponse;
 import io.paylite.qa.model.PaymentStatus;
 import io.paylite.qa.model.ProblemResponse;
 import io.paylite.qa.steps.PaymentSteps;
+import io.paylite.qa.assertions.PaymentAssertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,8 @@ class CancelPaymentTest {
     private final PaymentsClient payments = new PaymentsClient();
 
     private final PaymentSteps paymentSteps = new PaymentSteps(payments);
+
+    private final PaymentAssertions paymentAssertions = new PaymentAssertions(paymentSteps);
 
     @Nested
     @DisplayName("Cancel · accepted")
@@ -82,7 +86,7 @@ class CancelPaymentTest {
 
             assertProblem(payments.cancel(captured.id()),
                     409, "invalid_state");
-            assertUnchanged(captured);
+            paymentAssertions.assertUnchanged(captured);
         }
 
         @Test
@@ -92,7 +96,29 @@ class CancelPaymentTest {
 
             assertProblem(payments.cancel(cancelled.id()),
                     409, "invalid_state");
-            assertUnchanged(cancelled);
+            paymentAssertions.assertUnchanged(cancelled);
+        }
+
+        @Test
+        @DisplayName("[CNL-05] Cancel of a partially refunded payment")
+        void cancelFromPartiallyRefunded() {
+            PaymentResponse partiallyRefunded = paymentSteps.refunded(370L, 220L);
+
+            assertProblem(payments.cancel(partiallyRefunded.id()),
+                    409, "invalid_state");
+
+            paymentAssertions.assertUnchanged(partiallyRefunded);
+        }
+
+        @Test
+        @DisplayName("[CNL-06] Cancel of a fully refunded payment")
+        void cancelFromFullyRefunded() {
+            PaymentResponse totallyRefunded = paymentSteps.refunded(370L, 370L);
+
+            assertProblem(payments.cancel(totallyRefunded.id()),
+                    409, "invalid_state");
+
+            paymentAssertions.assertUnchanged(totallyRefunded);
         }
 
     }
@@ -122,7 +148,7 @@ class CancelPaymentTest {
 
             assertProblem(payments.cancelWithoutIdempotencyKey(authorized.id()),
                     400, "missing_idempotency_key");
-            assertUnchanged(authorized);
+            paymentAssertions.assertUnchanged(authorized);
         }
 
         @Test
@@ -133,16 +159,8 @@ class CancelPaymentTest {
             ProblemResponse problem = assertProblem(payments.cancelWithBody(authorized.id(),
                     Map.of("unknown_field", "unknown_value")), 400, "malformed_request");
             assertThat(problem.detail()).contains("'unknown_field'");
-            assertUnchanged(authorized);
+            paymentAssertions.assertUnchanged(authorized);
         }
     }
 
-    /**
-     * A rejected operation must leave no trace: every field, including updatedAt, is the same.
-     */
-    private void assertUnchanged(PaymentResponse expected) {
-        assertThat(paymentSteps.fetch(expected.id()))
-                .as("payment after the rejected operation")
-                .isEqualTo(expected);
-    }
 }

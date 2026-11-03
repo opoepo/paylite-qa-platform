@@ -6,6 +6,7 @@ import io.paylite.qa.model.CapturePaymentRequest;
 import io.paylite.qa.model.PaymentResponse;
 import io.paylite.qa.model.PaymentStatus;
 import io.paylite.qa.steps.PaymentSteps;
+import io.paylite.qa.assertions.PaymentAssertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,8 @@ class CapturePaymentTest {
     private final PaymentsClient payments = new PaymentsClient();
 
     private final PaymentSteps paymentSteps = new PaymentSteps(payments);
+
+    private final PaymentAssertions paymentAssertions = new PaymentAssertions(paymentSteps);
 
     @Nested
     @DisplayName("Capture · accepted")
@@ -100,7 +103,7 @@ class CapturePaymentTest {
             assertProblem(payments.capture(captured.id(), CapturePaymentRequest.of(370L)),
                     409, "invalid_state");
 
-            assertUnchanged(captured);
+            paymentAssertions.assertUnchanged(captured);
         }
 
         @Test
@@ -111,7 +114,7 @@ class CapturePaymentTest {
             assertProblem(payments.capture(authorized.id(), CapturePaymentRequest.of(authorized.authorizedAmount() + 1)),
                     422, "capture_exceeds_authorized");
 
-            assertUnchanged(authorized);
+            paymentAssertions.assertUnchanged(authorized);
         }
 
         @Test
@@ -122,8 +125,31 @@ class CapturePaymentTest {
             assertProblem(payments.capture(cancelled.id(), CapturePaymentRequest.of(370L)),
                     409, "invalid_state");
 
-            assertUnchanged(cancelled);
+            paymentAssertions.assertUnchanged(cancelled);
         }
+
+        @Test
+        @DisplayName("[CAP-16] Capture of a partially refunded payment")
+        void captureFromPartiallyRefunded() {
+            PaymentResponse partiallyRefunded = paymentSteps.refunded(370L, 220L);
+
+            assertProblem(payments.capture(partiallyRefunded.id(), CapturePaymentRequest.of(370L)),
+                    409, "invalid_state");
+
+            paymentAssertions.assertUnchanged(partiallyRefunded);
+        }
+
+        @Test
+        @DisplayName("[CAP-17] Capture of a fully refunded payment")
+        void captureFromFullyRefunded() {
+            PaymentResponse totallyRefunded = paymentSteps.refunded(370L, 370L);
+
+            assertProblem(payments.capture(totallyRefunded.id(), CapturePaymentRequest.of(370L)),
+                    409, "invalid_state");
+
+            paymentAssertions.assertUnchanged(totallyRefunded);
+        }
+
     }
 
     @Nested
@@ -152,7 +178,7 @@ class CapturePaymentTest {
             assertProblem(payments.captureWithoutIdempotencyKey(authorized.id(), CapturePaymentRequest.of(370L)),
                     400, "missing_idempotency_key");
 
-            assertUnchanged(authorized);
+            paymentAssertions.assertUnchanged(authorized);
         }
 
         @Test
@@ -164,18 +190,18 @@ class CapturePaymentTest {
                             Map.of("amount", 370, "status", "CAPTURED")),
                     400, "malformed_request");
 
-            assertUnchanged(authorized);
+            paymentAssertions.assertUnchanged(authorized);
         }
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("invalidAmounts")
-        @DisplayName("Invalid amount is rejected")
+        @DisplayName("[CAP-15] Invalid amount is rejected")
         void invalidAmount(String caseName, Map<String, Object> body, Violation expected) {
             PaymentResponse authorized = paymentSteps.authorized();
 
             assertValidationFailed(payments.captureRaw(authorized.id().toString(), body), expected);
 
-            assertUnchanged(authorized);
+            paymentAssertions.assertUnchanged(authorized);
         }
 
         static Stream<Arguments> invalidAmounts() {
@@ -186,16 +212,6 @@ class CapturePaymentTest {
                     Arguments.of("[CAP-15] missing amount", Map.of(), violation("amount", "required"))
             );
         }
-    }
-
-    // ── Helpers ────────────────────────────────────────────────────────────
-
-
-    /** A rejected operation must leave no trace: every field, including updatedAt, is the same. */
-    private void assertUnchanged(PaymentResponse expected) {
-        assertThat(paymentSteps.fetch(expected.id()))
-                .as("payment after the rejected operation")
-                .isEqualTo(expected);
     }
 
     private static Map<String, Object> amount(Object value) {
